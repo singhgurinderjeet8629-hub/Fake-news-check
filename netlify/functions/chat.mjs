@@ -17,67 +17,103 @@ export default async (req) => {
     );
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     return Response.json(
-      { error: "ANTHROPIC_API_KEY is not configured in Netlify." },
+      { error: "GEMINI_API_KEY is not configured in Netlify." },
       { status: 500 }
     );
   }
 
-  const body = await req.json();
-  const message = body?.message?.trim();
+  try {
+    const body = await req.json();
+    const message = body?.message?.trim();
 
-  if (!message) {
-    return Response.json(
-      { error: "Please provide a message." },
-      { status: 400 }
+    if (!message) {
+      return Response.json(
+        { error: "Please provide a news claim." },
+        { status: 400 }
+      );
+    }
+
+    const prompt = `
+You are a fake-news verification assistant.
+
+Analyze this news claim:
+
+"${message}"
+
+Give your answer in this format:
+
+VERDICT: LIKELY TRUE / LIKELY FALSE / MISLEADING / UNVERIFIABLE
+CONFIDENCE: LOW / MEDIUM / HIGH
+
+WHY:
+Give a short, clear explanation.
+
+IMPORTANT:
+Do not invent sources or facts.
+If you cannot reliably verify something, say UNVERIFIABLE.
+`;
+
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+        encodeURIComponent(apiKey),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ]
+        })
+      }
     );
-  }
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      system: `You are a fake-news verification assistant.
-Analyze the user's news claim carefully.
-Give:
-VERDICT: LIKELY TRUE, LIKELY FALSE, MISLEADING, or UNVERIFIABLE
-CONFIDENCE: Low, Medium, or High
-WHY: a short explanation.
-SOURCES: relevant sources if available.
-Never invent facts or sources.`,
-      messages: [
+    const data = await response.json();
+
+    if (!response.ok) {
+      return Response.json(
         {
-          role: "user",
-          content: message
-        }
-      ]
-    })
-  });
+          error:
+            data?.error?.message ||
+            "Gemini API request failed."
+        },
+        { status: response.status }
+      );
+    }
 
-  const data = await response.json();
+    const reply =
+      data?.candidates?.[0]?.content?.parts
+        ?.map(part => part.text || "")
+        .join("") || "";
 
-  if (!response.ok) {
+    if (!reply) {
+      return Response.json(
+        { error: "Gemini returned no answer." },
+        { status: 502 }
+      );
+    }
+
+    return Response.json({ reply });
+
+  } catch (error) {
+    console.error(error);
+
     return Response.json(
-      { error: data?.error?.message || "AI request failed." },
-      { status: response.status }
+      { error: "Could not connect to Gemini." },
+      { status: 500 }
     );
   }
-
-  const reply = (data.content || [])
-    .filter(block => block.type === "text")
-    .map(block => block.text)
-    .join("\n\n");
-
-  return Response.json({ reply });
 };
 
 export const config = {
