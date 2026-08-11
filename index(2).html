@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fake News Checker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 30px 20px;
+      background: #f5f7fb;
+      color: #1f2937;
+    }
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    }
+    h1 { margin-top: 0; }
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      box-sizing: border-box;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 16px;
+      resize: vertical;
+    }
+    button {
+      margin-top: 14px;
+      padding: 12px 20px;
+      border: 0;
+      border-radius: 9px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    #result {
+      margin-top: 20px;
+      padding: 16px;
+      background: #f1f5f9;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      min-height: 50px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Fake News Checker</h1>
+    <p>Paste a news claim below and check it.</p>
+
+    <textarea id="claim" placeholder="Example: Paste a news claim here..."></textarea>
+    <button id="checkButton" onclick="checkNews()">Check News</button>
+
+    <div id="result">Your result will appear here.</div>
+  </div>
+
+  <script>
+    async function checkNews() {
+      const claim = document.getElementById("claim").value.trim();
+      const result = document.getElementById("result");
+      const button = document.getElementById("checkButton");
+
+      if (!claim) {
+        result.textContent = "Please enter a news claim first.";
+        return;
+      }
+
+      button.disabled = true;
+      result.textContent = "Checking...";
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: claim })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Something went wrong.");
+        }
+
+        result.textContent = data.reply;
+      } catch (error) {
+        result.textContent = "Error: " + error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
