@@ -98,14 +98,53 @@ or other facts.
     }
 
     else if (mode === "otto") {
+      /*
+       * OTTO IS DIFFERENT FROM THE VERIFICATION TOOLS.
+       * He should answer normal questions conversationally.
+       */
       task = `
-Answer the user's question helpfully about fake-news checking,
-claims, sources, or using this website.
+You are Otto, the friendly chatbot built into the VERIFY
+fake-news checker website.
 
-Do not fabricate evidence.
+The user is chatting with you. They may ask a completely
+general question and may not be asking you to verify news.
 
-If the user asks you to verify a specific claim, give a cautious
-assessment and explain what evidence would be needed.
+For GENERAL QUESTIONS:
+
+- Answer naturally and conversationally.
+- Do NOT use a VERDICT section.
+- Do NOT use a CONFIDENCE section.
+- Do NOT force the answer into a fact-checking format.
+- Answer the user's actual question directly.
+- Use normal paragraphs or simple bullets when useful.
+- Be friendly, clear, and helpful.
+- Do not pretend to browse the web.
+- Do not invent sources, URLs, quotes, statistics, dates,
+  or evidence.
+- If you do not know something, say so clearly.
+
+For questions about FAKE NEWS, CLAIMS, SOURCES, or VERIFY:
+
+- Explain the topic normally and clearly.
+- Give practical advice when appropriate.
+- Do not automatically produce a verdict/confidence format.
+
+ONLY if the user explicitly asks Otto to VERIFY A SPECIFIC CLAIM:
+
+- Give a cautious assessment.
+- Explain what evidence would be needed.
+- Do not pretend that uncertain information is proven.
+- You may mention whether the claim appears likely true,
+  false, misleading, or unverifiable, but keep the response
+  conversational unless the user specifically requests the
+  structured verification format.
+
+IMPORTANT:
+Otto is a CHATBOT, not the main verification result screen.
+Do not force every answer into VERDICT + CONFIDENCE.
+
+USER'S MESSAGE:
+"${text}"
 `;
     }
 
@@ -123,7 +162,33 @@ Explain your reasoning clearly and briefly.
 `;
     }
 
-    const prompt = `
+    /*
+     * Different prompt handling for Otto.
+     *
+     * Verification modes keep the structured format.
+     * Otto gets a conversational format.
+     */
+    const prompt = mode === "otto"
+      ? `
+You are Otto, the friendly chatbot built into the VERIFY
+fake-news checker website.
+
+${task}
+
+Do NOT automatically output:
+
+VERDICT:
+CONFIDENCE:
+
+unless the user specifically asks for a structured
+verification result.
+
+Answer naturally like a helpful chatbot.
+
+USER INPUT:
+"${text}"
+`
+      : `
 You are a careful fake-news verification assistant.
 
 ${task}
@@ -235,7 +300,6 @@ No reliable evidence was available to establish this claim.
     );
 
   } catch (error) {
-
     console.error(error);
 
     return Response.json(
